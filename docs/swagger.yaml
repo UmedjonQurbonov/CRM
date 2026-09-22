@@ -67,6 +67,22 @@ definitions:
         example: Success
         type: string
     type: object
+  http.OrderListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/usecase.OrderResponseDTO'
+        type: array
+      limit:
+        example: 20
+        type: integer
+      offset:
+        example: 0
+        type: integer
+      total:
+        example: 50
+        type: integer
+    type: object
   http.ProductListResponse:
     properties:
       items:
@@ -166,6 +182,79 @@ definitions:
         type: object
       message:
         example: Invalid phone or password
+        type: string
+    type: object
+  usecase.CartItemDTO:
+    properties:
+      product_id:
+        example: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
+        type: string
+      quantity:
+        example: 2
+        type: integer
+    type: object
+  usecase.CheckoutRequestDTO:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/usecase.CartItemDTO'
+        type: array
+      payment_method:
+        description: cash, card, transfer
+        example: cash
+        type: string
+    type: object
+  usecase.OrderItemResponseDTO:
+    properties:
+      id:
+        example: 7ca7b810-9dad-11d1-80b4-00c04fd430c9
+        type: string
+      product_id:
+        example: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
+        type: string
+      product_name:
+        example: Sony WH-1000XM5
+        type: string
+      quantity:
+        example: 2
+        type: integer
+      subtotal:
+        example: "799.98"
+        type: string
+      unit_price:
+        example: "399.99"
+        type: string
+    type: object
+  usecase.OrderResponseDTO:
+    properties:
+      commission_earned:
+        example: "40.00"
+        type: string
+      commission_rate_snapshot:
+        example: "5.00"
+        type: string
+      created_at:
+        type: string
+      id:
+        example: 5ba7b810-9dad-11d1-80b4-00c04fd430c7
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/usecase.OrderItemResponseDTO'
+        type: array
+      payment_method:
+        example: cash
+        type: string
+      seller_id:
+        example: adfae494-4586-4992-b63a-8884bd0aac6c
+        type: string
+      status:
+        example: completed
+        type: string
+      total_amount:
+        example: "799.98"
+        type: string
+      updated_at:
         type: string
     type: object
   usecase.ProductResponseDTO:
@@ -338,6 +427,185 @@ paths:
       summary: Refresh Access Token
       tags:
       - Auth
+  /api/v1/orders:
+    get:
+      description: Browse sales orders with optional filters. Sellers only see their
+        own receipts.
+      parameters:
+      - description: Filter by seller UUID (Owner only)
+        in: query
+        name: seller_id
+        type: string
+      - description: 'Filter by status: completed or refunded'
+        in: query
+        name: status
+        type: string
+      - description: Filter from date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: Filter to date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      - default: 20
+        description: Pagination limit (max 100)
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Pagination offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.OrderListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List Sales Orders
+      tags:
+      - Orders
+    post:
+      consumes:
+      - application/json
+      description: Creates sales receipt with atomic stock decrement and commission
+        snapshot.
+      parameters:
+      - description: Checkout details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/usecase.CheckoutRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/usecase.OrderResponseDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Process Order Checkout
+      tags:
+      - Orders
+  /api/v1/orders/{id}:
+    get:
+      description: Retrieve receipt details with items. Sellers can only view their
+        own receipts.
+      parameters:
+      - description: Order UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usecase.OrderResponseDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get Order by ID
+      tags:
+      - Orders
+  /api/v1/orders/{id}/refund:
+    post:
+      description: Issues a full refund, restocks inventory, and sets order status
+        to refunded (Owner only).
+      parameters:
+      - description: Order UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usecase.OrderResponseDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Refund Order
+      tags:
+      - Orders
   /api/v1/products:
     get:
       description: Browse catalog with optional search, low stock filter, and pagination.
