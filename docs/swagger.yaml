@@ -1,0 +1,50 @@
+basePath: /
+definitions:
+  main.HealthResponse:
+    properties:
+      database:
+        example: connected
+        type: string
+      redis:
+        example: connected
+        type: string
+      status:
+        example: ok
+        type: string
+      timestamp:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@example.com
+    name: API Support
+  description: High-performance retail POS and inventory management API with RBAC,
+    atomic checkout, and analytics.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Retail POS & Inventory API
+  version: "1.0"
+paths:
+  /health:
+    get:
+      description: Returns the operational status of the service and database
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.HealthResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/main.HealthResponse'
+      summary: Health Check
+      tags:
+      - System
+schemes:
+- http
+swagger: "2.0"

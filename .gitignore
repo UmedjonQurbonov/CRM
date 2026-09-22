@@ -1,3 +1,16 @@
 agent_directives_architecture_rules.md
 project_execution_checklist_state.md
 system_architecture_blueprint.md
+task.md
+
+# Environment variables
+.env
+
+# Binaries
+bin/
+*.exe
+
+# IDE / OS files
+.idea/
+.vscode/
+*.swp
