@@ -10,17 +10,17 @@ import (
 
 // Product represents the inventory entity in the catalog.
 type Product struct {
-	ID             uuid.UUID
-	Name           string
-	SKU            string
-	QRCode         string
-	CostPrice      decimal.Decimal
-	SellingPrice   decimal.Decimal
-	StockQuantity  int
-	MinStockAlert  int
-	IsActive       bool
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID            uuid.UUID
+	Name          string
+	SKU           string
+	QRCode        string
+	CostPrice     decimal.Decimal
+	SellingPrice  decimal.Decimal
+	StockQuantity int
+	MinStockAlert int
+	IsActive      bool
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 // Validate checks domain invariants for Product.
