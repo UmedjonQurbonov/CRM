@@ -11,6 +11,7 @@ func RegisterRoutes(
 	r chi.Router,
 	authHandler *AuthHandler,
 	sellerHandler *SellerHandler,
+	myEarningsHandler http.HandlerFunc,
 	authMiddleware func(http.Handler) http.Handler,
 	ownerOnlyMiddleware func(http.Handler) http.Handler,
 ) {
@@ -22,9 +23,11 @@ func RegisterRoutes(
 
 	r.Route("/sellers", func(r chi.Router) {
 		r.Use(authMiddleware)
-		r.Use(ownerOnlyMiddleware)
-		r.Get("/", sellerHandler.ListSellers)
-		r.Post("/", sellerHandler.CreateSeller)
-		r.Patch("/{id}/commission", sellerHandler.UpdateCommission)
+		if myEarningsHandler != nil {
+			r.Get("/my-earnings", myEarningsHandler)
+		}
+		r.With(ownerOnlyMiddleware).Get("/", sellerHandler.ListSellers)
+		r.With(ownerOnlyMiddleware).Post("/", sellerHandler.CreateSeller)
+		r.With(ownerOnlyMiddleware).Patch("/{id}/commission", sellerHandler.UpdateCommission)
 	})
 }

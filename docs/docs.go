@@ -23,6 +23,215 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/v1/analytics/sellers-ranking": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Ranks sellers by completed sales volume, commission earned, and revenue share percentage for a period. Accessible exclusively to Owner.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Analytics"
+                ],
+                "summary": "Sellers Ranking",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter start date (YYYY-MM-DD)",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter end date (YYYY-MM-DD)",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Top N sellers",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/usecase.SellerRankingDTO"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/analytics/summary": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Calculates Revenue, Cost of Goods Sold, Gross Profit, Expenses, Commissions, and Net Profit for a period. Accessible exclusively to Owner.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Analytics"
+                ],
+                "summary": "Financial P\u0026L Statement",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter start date (YYYY-MM-DD)",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter end date (YYYY-MM-DD)",
+                        "name": "to",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.AnalyticsSummaryDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/analytics/top-products": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Ranks catalog products by sales volume and total revenue generated for a period. Accessible exclusively to Owner.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Analytics"
+                ],
+                "summary": "Top Products by Revenue",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter start date (YYYY-MM-DD)",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter end date (YYYY-MM-DD)",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Top N products",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/usecase.TopProductDTO"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/auth/login": {
             "post": {
                 "description": "Authenticates user by phone and password, issuing access and refresh tokens.",
@@ -1101,6 +1310,63 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/sellers/my-earnings": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns the calling seller's total sales volume, commission rate, and accumulated commissions for a period. Accessible to Sellers and Owners.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sellers"
+                ],
+                "summary": "Seller Personal Earnings",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter start date (YYYY-MM-DD)",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter end date (YYYY-MM-DD)",
+                        "name": "to",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.SellerEarningsDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/sellers/{id}/commission": {
             "patch": {
                 "security": [
@@ -1512,6 +1778,47 @@ const docTemplate = `{
                 }
             }
         },
+        "usecase.AnalyticsSummaryDTO": {
+            "type": "object",
+            "properties": {
+                "cost_of_goods_sold": {
+                    "type": "string",
+                    "example": "7500.00"
+                },
+                "gross_profit": {
+                    "type": "string",
+                    "example": "5000.00"
+                },
+                "net_profit": {
+                    "type": "string",
+                    "example": "2950.00"
+                },
+                "period_from": {
+                    "type": "string",
+                    "example": "2026-09-01"
+                },
+                "period_to": {
+                    "type": "string",
+                    "example": "2026-09-22"
+                },
+                "revenue": {
+                    "type": "string",
+                    "example": "12500.00"
+                },
+                "total_commissions": {
+                    "type": "string",
+                    "example": "850.00"
+                },
+                "total_expenses": {
+                    "type": "string",
+                    "example": "1200.00"
+                },
+                "total_orders": {
+                    "type": "integer",
+                    "example": 120
+                }
+            }
+        },
         "usecase.CartItemDTO": {
             "type": "object",
             "properties": {
@@ -1700,6 +2007,72 @@ const docTemplate = `{
                 }
             }
         },
+        "usecase.SellerEarningsDTO": {
+            "type": "object",
+            "properties": {
+                "commission_rate": {
+                    "type": "string",
+                    "example": "8.50%"
+                },
+                "orders_count": {
+                    "type": "integer",
+                    "example": 45
+                },
+                "period_from": {
+                    "type": "string",
+                    "example": "2026-09-01"
+                },
+                "period_to": {
+                    "type": "string",
+                    "example": "2026-09-22"
+                },
+                "seller_id": {
+                    "type": "string",
+                    "example": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
+                },
+                "seller_name": {
+                    "type": "string",
+                    "example": "Umedjon Qurbonov"
+                },
+                "total_commission_earned": {
+                    "type": "string",
+                    "example": "552.50"
+                },
+                "total_sales_amount": {
+                    "type": "string",
+                    "example": "6500.00"
+                }
+            }
+        },
+        "usecase.SellerRankingDTO": {
+            "type": "object",
+            "properties": {
+                "commission_earned": {
+                    "type": "string",
+                    "example": "552.50"
+                },
+                "revenue_share_percentage": {
+                    "type": "string",
+                    "example": "52.00%"
+                },
+                "seller_id": {
+                    "type": "string",
+                    "example": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
+                },
+                "seller_name": {
+                    "type": "string",
+                    "example": "Umedjon Qurbonov"
+                },
+                "total_orders": {
+                    "type": "integer",
+                    "example": 45
+                },
+                "total_revenue": {
+                    "type": "string",
+                    "example": "6500.00"
+                }
+            }
+        },
         "usecase.TokenPair": {
             "type": "object",
             "properties": {
@@ -1715,6 +2088,31 @@ const docTemplate = `{
                 },
                 "token_type": {
                     "type": "string"
+                }
+            }
+        },
+        "usecase.TopProductDTO": {
+            "type": "object",
+            "properties": {
+                "product_id": {
+                    "type": "string",
+                    "example": "70cf0d01-fca2-45ff-bf86-99602ea12f39"
+                },
+                "product_name": {
+                    "type": "string",
+                    "example": "Classic White T-Shirt"
+                },
+                "sku": {
+                    "type": "string",
+                    "example": "TSHIRT-WHT-001"
+                },
+                "total_quantity_sold": {
+                    "type": "integer",
+                    "example": 85
+                },
+                "total_revenue": {
+                    "type": "string",
+                    "example": "12750.00"
                 }
             }
         }

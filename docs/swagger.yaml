@@ -215,6 +215,36 @@ definitions:
         example: Invalid phone or password
         type: string
     type: object
+  usecase.AnalyticsSummaryDTO:
+    properties:
+      cost_of_goods_sold:
+        example: "7500.00"
+        type: string
+      gross_profit:
+        example: "5000.00"
+        type: string
+      net_profit:
+        example: "2950.00"
+        type: string
+      period_from:
+        example: "2026-09-01"
+        type: string
+      period_to:
+        example: "2026-09-22"
+        type: string
+      revenue:
+        example: "12500.00"
+        type: string
+      total_commissions:
+        example: "850.00"
+        type: string
+      total_expenses:
+        example: "1200.00"
+        type: string
+      total_orders:
+        example: 120
+        type: integer
+    type: object
   usecase.CartItemDTO:
     properties:
       product_id:
@@ -350,6 +380,54 @@ definitions:
       updated_at:
         type: string
     type: object
+  usecase.SellerEarningsDTO:
+    properties:
+      commission_rate:
+        example: 8.50%
+        type: string
+      orders_count:
+        example: 45
+        type: integer
+      period_from:
+        example: "2026-09-01"
+        type: string
+      period_to:
+        example: "2026-09-22"
+        type: string
+      seller_id:
+        example: 9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d
+        type: string
+      seller_name:
+        example: Umedjon Qurbonov
+        type: string
+      total_commission_earned:
+        example: "552.50"
+        type: string
+      total_sales_amount:
+        example: "6500.00"
+        type: string
+    type: object
+  usecase.SellerRankingDTO:
+    properties:
+      commission_earned:
+        example: "552.50"
+        type: string
+      revenue_share_percentage:
+        example: 52.00%
+        type: string
+      seller_id:
+        example: 9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d
+        type: string
+      seller_name:
+        example: Umedjon Qurbonov
+        type: string
+      total_orders:
+        example: 45
+        type: integer
+      total_revenue:
+        example: "6500.00"
+        type: string
+    type: object
   usecase.TokenPair:
     properties:
       access_token:
@@ -360,6 +438,24 @@ definitions:
       refresh_token:
         type: string
       token_type:
+        type: string
+    type: object
+  usecase.TopProductDTO:
+    properties:
+      product_id:
+        example: 70cf0d01-fca2-45ff-bf86-99602ea12f39
+        type: string
+      product_name:
+        example: Classic White T-Shirt
+        type: string
+      sku:
+        example: TSHIRT-WHT-001
+        type: string
+      total_quantity_sold:
+        example: 85
+        type: integer
+      total_revenue:
+        example: "12750.00"
         type: string
     type: object
 host: localhost:8080
@@ -376,6 +472,143 @@ info:
   title: Retail POS & Inventory API
   version: "1.0"
 paths:
+  /api/v1/analytics/sellers-ranking:
+    get:
+      description: Ranks sellers by completed sales volume, commission earned, and
+        revenue share percentage for a period. Accessible exclusively to Owner.
+      parameters:
+      - description: Filter start date (YYYY-MM-DD)
+        in: query
+        name: from
+        type: string
+      - description: Filter end date (YYYY-MM-DD)
+        in: query
+        name: to
+        type: string
+      - default: 10
+        description: Top N sellers
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/usecase.SellerRankingDTO'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Sellers Ranking
+      tags:
+      - Analytics
+  /api/v1/analytics/summary:
+    get:
+      description: Calculates Revenue, Cost of Goods Sold, Gross Profit, Expenses,
+        Commissions, and Net Profit for a period. Accessible exclusively to Owner.
+      parameters:
+      - description: Filter start date (YYYY-MM-DD)
+        in: query
+        name: from
+        type: string
+      - description: Filter end date (YYYY-MM-DD)
+        in: query
+        name: to
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usecase.AnalyticsSummaryDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Financial P&L Statement
+      tags:
+      - Analytics
+  /api/v1/analytics/top-products:
+    get:
+      description: Ranks catalog products by sales volume and total revenue generated
+        for a period. Accessible exclusively to Owner.
+      parameters:
+      - description: Filter start date (YYYY-MM-DD)
+        in: query
+        name: from
+        type: string
+      - description: Filter end date (YYYY-MM-DD)
+        in: query
+        name: to
+        type: string
+      - default: 10
+        description: Top N products
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/usecase.TopProductDTO'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Top Products by Revenue
+      tags:
+      - Analytics
   /api/v1/auth/login:
     post:
       consumes:
@@ -1132,6 +1365,43 @@ paths:
       security:
       - BearerAuth: []
       summary: Update Seller Commission
+      tags:
+      - Sellers
+  /api/v1/sellers/my-earnings:
+    get:
+      description: Returns the calling seller's total sales volume, commission rate,
+        and accumulated commissions for a period. Accessible to Sellers and Owners.
+      parameters:
+      - description: Filter start date (YYYY-MM-DD)
+        in: query
+        name: from
+        type: string
+      - description: Filter end date (YYYY-MM-DD)
+        in: query
+        name: to
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usecase.SellerEarningsDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Seller Personal Earnings
       tags:
       - Sellers
   /health:

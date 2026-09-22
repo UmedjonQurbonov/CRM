@@ -15,6 +15,9 @@ import (
 	_ "github.com/UmedjonQurbonov/CRM/docs"
 	"github.com/UmedjonQurbonov/CRM/internal/config"
 	"github.com/UmedjonQurbonov/CRM/internal/middleware"
+	analyticsHttp "github.com/UmedjonQurbonov/CRM/internal/modules/analytics/delivery/http"
+	analyticsRepo "github.com/UmedjonQurbonov/CRM/internal/modules/analytics/repository"
+	analyticsUsecase "github.com/UmedjonQurbonov/CRM/internal/modules/analytics/usecase"
 	authHttp "github.com/UmedjonQurbonov/CRM/internal/modules/auth/delivery/http"
 	"github.com/UmedjonQurbonov/CRM/internal/modules/auth/domain"
 	"github.com/UmedjonQurbonov/CRM/internal/modules/auth/repository"
@@ -126,7 +129,12 @@ func main() {
 	expUsecase := expenseUsecase.NewExpenseUsecase(expRepo)
 	expHandler := expenseHttp.NewExpenseHandler(expUsecase)
 
-	// 11. Initialize Redis client (health check)
+	// 11. Initialize Analytics module
+	anRepo := analyticsRepo.NewPostgresAnalyticsRepository(dbPool)
+	anUsecase := analyticsUsecase.NewAnalyticsUsecase(anRepo)
+	anHandler := analyticsHttp.NewAnalyticsHandler(anUsecase)
+
+	// 12. Initialize Redis client (health check)
 	redisStatus := "connected"
 	redisClient, err := redis.NewClient(ctx, cfg.Redis)
 	if err != nil {
@@ -137,7 +145,7 @@ func main() {
 		log.Printf("Connected to Redis on %s", cfg.Redis.Addr)
 	}
 
-	// 12. Setup Chi Router & Middleware
+	// 13. Setup Chi Router & Middleware
 	r := chi.NewRouter()
 
 	r.Use(chiMiddleware.RequestID)
@@ -164,10 +172,11 @@ func main() {
 	ownerOnlyMiddleware := middleware.RequireRole(domain.RoleOwner)
 
 	r.Route("/api/v1", func(apiRouter chi.Router) {
-		authHttp.RegisterRoutes(apiRouter, authHandler, sellerHandler, authMiddleware, ownerOnlyMiddleware)
+		authHttp.RegisterRoutes(apiRouter, authHandler, sellerHandler, anHandler.GetMyEarnings, authMiddleware, ownerOnlyMiddleware)
 		productHttp.RegisterRoutes(apiRouter, prodHandler, authMiddleware, ownerOnlyMiddleware)
 		orderHttp.RegisterRoutes(apiRouter, ordHandler, authMiddleware, ownerOnlyMiddleware)
 		expenseHttp.RegisterRoutes(apiRouter, expHandler, authMiddleware, ownerOnlyMiddleware)
+		analyticsHttp.RegisterRoutes(apiRouter, anHandler, authMiddleware, ownerOnlyMiddleware)
 	})
 
 	// 10. HTTP Server Setup & Graceful Shutdown
