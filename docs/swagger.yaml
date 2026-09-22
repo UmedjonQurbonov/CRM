@@ -7,6 +7,21 @@ definitions:
       user:
         $ref: '#/definitions/http.UserDTO'
     type: object
+  http.CreateExpenseRequest:
+    properties:
+      amount:
+        example: "450.00"
+        type: string
+      category:
+        example: utilities
+        type: string
+      comment:
+        example: Monthly electricity bill for store
+        type: string
+      expense_date:
+        example: "2026-09-22"
+        type: string
+    type: object
   http.CreateProductRequest:
     properties:
       cost_price:
@@ -45,6 +60,22 @@ definitions:
       phone:
         example: "+992901111111"
         type: string
+    type: object
+  http.ExpenseListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/usecase.ExpenseResponseDTO'
+        type: array
+      limit:
+        example: 20
+        type: integer
+      offset:
+        example: 0
+        type: integer
+      total:
+        example: 25
+        type: integer
     type: object
   http.LoginRequest:
     properties:
@@ -202,6 +233,30 @@ definitions:
       payment_method:
         description: cash, card, transfer
         example: cash
+        type: string
+    type: object
+  usecase.ExpenseResponseDTO:
+    properties:
+      amount:
+        example: "450.00"
+        type: string
+      category:
+        example: utilities
+        type: string
+      comment:
+        example: Monthly electricity bill for store
+        type: string
+      created_at:
+        example: "2026-09-22T10:00:00Z"
+        type: string
+      created_by:
+        example: 9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d
+        type: string
+      expense_date:
+        example: "2026-09-22"
+        type: string
+      id:
+        example: 497f6eca-6276-4993-bfeb-53cbbbba6f08
         type: string
     type: object
   usecase.OrderItemResponseDTO:
@@ -427,6 +482,135 @@ paths:
       summary: Refresh Access Token
       tags:
       - Auth
+  /api/v1/expenses:
+    get:
+      description: Retrieve operational expenses with filtering by category, date
+        range, and pagination. Accessible exclusively to Owner.
+      parameters:
+      - description: Filter by category substring
+        in: query
+        name: category
+        type: string
+      - description: Filter start date (YYYY-MM-DD)
+        in: query
+        name: from_date
+        type: string
+      - description: Filter end date (YYYY-MM-DD)
+        in: query
+        name: to_date
+        type: string
+      - default: 20
+        description: Pagination limit (max 100)
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Pagination offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.ExpenseListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List Operational Expenses
+      tags:
+      - Expenses
+    post:
+      consumes:
+      - application/json
+      description: Record a store operational expense (rent, utilities, salaries,
+        marketing, etc.). Accessible exclusively to Owner.
+      parameters:
+      - description: Expense creation payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.CreateExpenseRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/usecase.ExpenseResponseDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create Operational Expense
+      tags:
+      - Expenses
+  /api/v1/expenses/{id}:
+    delete:
+      description: Permanently delete an erroneously recorded expense by UUID. Accessible
+        exclusively to Owner.
+      parameters:
+      - description: Expense UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete Operational Expense
+      tags:
+      - Expenses
   /api/v1/orders:
     get:
       description: Browse sales orders with optional filters. Sellers only see their

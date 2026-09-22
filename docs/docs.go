@@ -184,6 +184,202 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/expenses": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve operational expenses with filtering by category, date range, and pagination. Accessible exclusively to Owner.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Expenses"
+                ],
+                "summary": "List Operational Expenses",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by category substring",
+                        "name": "category",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter start date (YYYY-MM-DD)",
+                        "name": "from_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter end date (YYYY-MM-DD)",
+                        "name": "to_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Pagination limit (max 100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Pagination offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.ExpenseListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Record a store operational expense (rent, utilities, salaries, marketing, etc.). Accessible exclusively to Owner.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Expenses"
+                ],
+                "summary": "Create Operational Expense",
+                "parameters": [
+                    {
+                        "description": "Expense creation payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/http.CreateExpenseRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.ExpenseResponseDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/expenses/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Permanently delete an erroneously recorded expense by UUID. Accessible exclusively to Owner.",
+                "tags": [
+                    "Expenses"
+                ],
+                "summary": "Delete Operational Expense",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Expense UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/orders": {
             "get": {
                 "security": [
@@ -1020,6 +1216,27 @@ const docTemplate = `{
                 }
             }
         },
+        "http.CreateExpenseRequest": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "string",
+                    "example": "450.00"
+                },
+                "category": {
+                    "type": "string",
+                    "example": "utilities"
+                },
+                "comment": {
+                    "type": "string",
+                    "example": "Monthly electricity bill for store"
+                },
+                "expense_date": {
+                    "type": "string",
+                    "example": "2026-09-22"
+                }
+            }
+        },
         "http.CreateProductRequest": {
             "type": "object",
             "properties": {
@@ -1071,6 +1288,29 @@ const docTemplate = `{
                 "phone": {
                     "type": "string",
                     "example": "+992901111111"
+                }
+            }
+        },
+        "http.ExpenseListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/usecase.ExpenseResponseDTO"
+                    }
+                },
+                "limit": {
+                    "type": "integer",
+                    "example": 20
+                },
+                "offset": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "total": {
+                    "type": "integer",
+                    "example": 25
                 }
             }
         },
@@ -1298,6 +1538,39 @@ const docTemplate = `{
                     "description": "cash, card, transfer",
                     "type": "string",
                     "example": "cash"
+                }
+            }
+        },
+        "usecase.ExpenseResponseDTO": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "string",
+                    "example": "450.00"
+                },
+                "category": {
+                    "type": "string",
+                    "example": "utilities"
+                },
+                "comment": {
+                    "type": "string",
+                    "example": "Monthly electricity bill for store"
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-09-22T10:00:00Z"
+                },
+                "created_by": {
+                    "type": "string",
+                    "example": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
+                },
+                "expense_date": {
+                    "type": "string",
+                    "example": "2026-09-22"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "497f6eca-6276-4993-bfeb-53cbbbba6f08"
                 }
             }
         },

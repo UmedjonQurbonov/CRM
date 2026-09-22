@@ -19,6 +19,9 @@ import (
 	"github.com/UmedjonQurbonov/CRM/internal/modules/auth/domain"
 	"github.com/UmedjonQurbonov/CRM/internal/modules/auth/repository"
 	"github.com/UmedjonQurbonov/CRM/internal/modules/auth/usecase"
+	expenseHttp "github.com/UmedjonQurbonov/CRM/internal/modules/expense/delivery/http"
+	expenseRepo "github.com/UmedjonQurbonov/CRM/internal/modules/expense/repository"
+	expenseUsecase "github.com/UmedjonQurbonov/CRM/internal/modules/expense/usecase"
 	orderHttp "github.com/UmedjonQurbonov/CRM/internal/modules/order/delivery/http"
 	orderRepo "github.com/UmedjonQurbonov/CRM/internal/modules/order/repository"
 	orderUsecase "github.com/UmedjonQurbonov/CRM/internal/modules/order/usecase"
@@ -118,7 +121,12 @@ func main() {
 	ordUsecase := orderUsecase.NewOrderUsecase(ordRepo, userRepo)
 	ordHandler := orderHttp.NewOrderHandler(ordUsecase)
 
-	// 10. Initialize Redis client (health check)
+	// 10. Initialize Expense module
+	expRepo := expenseRepo.NewPostgresExpenseRepository(dbPool)
+	expUsecase := expenseUsecase.NewExpenseUsecase(expRepo)
+	expHandler := expenseHttp.NewExpenseHandler(expUsecase)
+
+	// 11. Initialize Redis client (health check)
 	redisStatus := "connected"
 	redisClient, err := redis.NewClient(ctx, cfg.Redis)
 	if err != nil {
@@ -129,7 +137,7 @@ func main() {
 		log.Printf("Connected to Redis on %s", cfg.Redis.Addr)
 	}
 
-	// 11. Setup Chi Router & Middleware
+	// 12. Setup Chi Router & Middleware
 	r := chi.NewRouter()
 
 	r.Use(chiMiddleware.RequestID)
@@ -159,6 +167,7 @@ func main() {
 		authHttp.RegisterRoutes(apiRouter, authHandler, sellerHandler, authMiddleware, ownerOnlyMiddleware)
 		productHttp.RegisterRoutes(apiRouter, prodHandler, authMiddleware, ownerOnlyMiddleware)
 		orderHttp.RegisterRoutes(apiRouter, ordHandler, authMiddleware, ownerOnlyMiddleware)
+		expenseHttp.RegisterRoutes(apiRouter, expHandler, authMiddleware, ownerOnlyMiddleware)
 	})
 
 	// 10. HTTP Server Setup & Graceful Shutdown
