@@ -1,5 +1,83 @@
 basePath: /
 definitions:
+  http.AuthResponse:
+    properties:
+      tokens:
+        $ref: '#/definitions/usecase.TokenPair'
+      user:
+        $ref: '#/definitions/http.UserDTO'
+    type: object
+  http.CreateSellerRequest:
+    properties:
+      commission_rate:
+        example: 5
+        type: number
+      name:
+        example: Umedjon Qurbonov
+        type: string
+      password:
+        example: SellerPass123!
+        type: string
+      phone:
+        example: "+992901111111"
+        type: string
+    type: object
+  http.LoginRequest:
+    properties:
+      password:
+        example: AdminPass123!
+        type: string
+      phone:
+        example: "+992900000000"
+        type: string
+    type: object
+  http.LogoutRequest:
+    properties:
+      refresh_token:
+        example: 5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8
+        type: string
+    type: object
+  http.MessageResponse:
+    properties:
+      message:
+        example: Success
+        type: string
+    type: object
+  http.RefreshRequest:
+    properties:
+      refresh_token:
+        example: 5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8
+        type: string
+    type: object
+  http.RefreshResponse:
+    properties:
+      tokens:
+        $ref: '#/definitions/usecase.TokenPair'
+    type: object
+  http.UpdateCommissionRequest:
+    properties:
+      commission_rate:
+        example: 7.5
+        type: number
+    type: object
+  http.UserDTO:
+    properties:
+      commission_rate:
+        example: "0.00"
+        type: string
+      id:
+        example: a43c2c77-4cf7-4f81-9b16-560ef71c9b68
+        type: string
+      name:
+        example: Admin Owner
+        type: string
+      phone:
+        example: "+992900000000"
+        type: string
+      role:
+        example: owner
+        type: string
+    type: object
   main.HealthResponse:
     properties:
       database:
@@ -12,6 +90,30 @@ definitions:
         example: ok
         type: string
       timestamp:
+        type: string
+    type: object
+  response.ErrorResponse:
+    properties:
+      code:
+        example: INVALID_CREDENTIALS
+        type: string
+      details:
+        additionalProperties: {}
+        type: object
+      message:
+        example: Invalid phone or password
+        type: string
+    type: object
+  usecase.TokenPair:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        description: in seconds
+        type: integer
+      refresh_token:
+        type: string
+      token_type:
         type: string
     type: object
 host: localhost:8080
@@ -28,6 +130,236 @@ info:
   title: Retail POS & Inventory API
   version: "1.0"
 paths:
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates user by phone and password, issuing access and refresh
+        tokens.
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.AuthResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: User Login
+      tags:
+      - Auth
+  /api/v1/auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Invalidates user refresh token session.
+      parameters:
+      - description: Refresh token to revoke
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.LogoutRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Logout
+      tags:
+      - Auth
+  /api/v1/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Validates refresh token, invalidates it (rotation), and issues
+        a new token pair.
+      parameters:
+      - description: Refresh token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.RefreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.RefreshResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Refresh Access Token
+      tags:
+      - Auth
+  /api/v1/sellers:
+    get:
+      description: Returns a list of all seller accounts and their commission rates
+        (Owner only).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/http.UserDTO'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List Sellers
+      tags:
+      - Sellers
+    post:
+      consumes:
+      - application/json
+      description: Creates a new seller user with custom commission percentage (Owner
+        only).
+      parameters:
+      - description: Seller registration details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.CreateSellerRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/http.UserDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create Seller Account
+      tags:
+      - Sellers
+  /api/v1/sellers/{id}/commission:
+    patch:
+      consumes:
+      - application/json
+      description: Updates the commission rate percentage for a specific seller (Owner
+        only).
+      parameters:
+      - description: Seller UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated commission percentage
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.UpdateCommissionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update Seller Commission
+      tags:
+      - Sellers
   /health:
     get:
       description: Returns the operational status of the service and database
@@ -47,4 +379,10 @@ paths:
       - System
 schemes:
 - http
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

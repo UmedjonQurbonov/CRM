@@ -55,7 +55,9 @@ type RedisConfig struct {
 
 // AuthConfig contains authentication and JWT settings.
 type AuthConfig struct {
-	JWTSecret string
+	JWTSecret     string
+	AdminPhone    string
+	AdminPassword string
 }
 
 // Load reads configuration from environment variables (and optional .env file).
@@ -89,7 +91,9 @@ func Load() (*Config, error) {
 			DB:       getEnvAsInt("REDIS_DB", 0),
 		},
 		Auth: AuthConfig{
-			JWTSecret: getEnv("JWT_SECRET", "default_crm_secret_key_change_in_production"),
+			JWTSecret:     getEnv("JWT_SECRET", "default_crm_secret_key_change_in_production"),
+			AdminPhone:    getEnv("ADMIN_PHONE", "+992900000000"),
+			AdminPassword: getEnv("ADMIN_PASSWORD", "AdminPass123!"),
 		},
 	}
 

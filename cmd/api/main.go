@@ -14,10 +14,16 @@ import (
 
 	_ "github.com/UmedjonQurbonov/CRM/docs"
 	"github.com/UmedjonQurbonov/CRM/internal/config"
+	"github.com/UmedjonQurbonov/CRM/internal/middleware"
+	authHttp "github.com/UmedjonQurbonov/CRM/internal/modules/auth/delivery/http"
+	"github.com/UmedjonQurbonov/CRM/internal/modules/auth/domain"
+	"github.com/UmedjonQurbonov/CRM/internal/modules/auth/repository"
+	"github.com/UmedjonQurbonov/CRM/internal/modules/auth/usecase"
 	"github.com/UmedjonQurbonov/CRM/internal/platform/database"
+	"github.com/UmedjonQurbonov/CRM/internal/platform/hasher"
 	"github.com/UmedjonQurbonov/CRM/internal/platform/redis"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
@@ -36,6 +42,11 @@ import (
 // @host localhost:8080
 // @BasePath /
 // @schemes http
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
 
 // HealthResponse represents the health check response body.
 type HealthResponse struct {
@@ -72,7 +83,26 @@ func main() {
 	}
 	log.Println("Database migrations completed successfully.")
 
-	// 4. Initialize Redis client (optional check for health report)
+	// 4. Initialize platform adapters
+	pwdHasher := hasher.NewBcryptHasher()
+	userRepo := repository.NewPostgresUserRepository(dbPool)
+	sessionRepo := repository.NewPostgresSessionRepository(dbPool)
+
+	// 5. Seed default Owner if needed
+	if err := usecase.SeedDefaultOwner(ctx, userRepo, pwdHasher, cfg.Auth.AdminPhone, cfg.Auth.AdminPassword); err != nil {
+		log.Fatalf("failed to seed default owner: %v", err)
+	}
+
+	// 6. Initialize business usecases
+	tokenService := usecase.NewTokenService(cfg.Auth.JWTSecret)
+	authUsecase := usecase.NewAuthUsecase(userRepo, sessionRepo, pwdHasher, tokenService)
+	sellerUsecase := usecase.NewSellerUsecase(userRepo, pwdHasher)
+
+	// 7. Initialize HTTP handlers
+	authHandler := authHttp.NewAuthHandler(authUsecase)
+	sellerHandler := authHttp.NewSellerHandler(sellerUsecase)
+
+	// 8. Initialize Redis client (health check)
 	redisStatus := "connected"
 	redisClient, err := redis.NewClient(ctx, cfg.Redis)
 	if err != nil {
@@ -83,14 +113,14 @@ func main() {
 		log.Printf("Connected to Redis on %s", cfg.Redis.Addr)
 	}
 
-	// 5. Setup Chi Router & Middleware
+	// 9. Setup Chi Router & Middleware
 	r := chi.NewRouter()
 
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-	r.Use(middleware.Timeout(60 * time.Second))
+	r.Use(chiMiddleware.RequestID)
+	r.Use(chiMiddleware.RealIP)
+	r.Use(chiMiddleware.Logger)
+	r.Use(chiMiddleware.Recoverer)
+	r.Use(chiMiddleware.Timeout(60 * time.Second))
 
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"*"},
@@ -101,13 +131,19 @@ func main() {
 		MaxAge:           300,
 	}))
 
-	// Healthcheck endpoint
+	// System endpoints
 	r.Get("/health", handleHealthCheck(dbPool, redisStatus))
-
-	// Swagger documentation endpoint
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 
-	// 6. HTTP Server Setup & Graceful Shutdown
+	// API v1 routes
+	authMiddleware := middleware.AuthMiddleware(tokenService)
+	ownerOnlyMiddleware := middleware.RequireRole(domain.RoleOwner)
+
+	r.Route("/api/v1", func(apiRouter chi.Router) {
+		authHttp.RegisterRoutes(apiRouter, authHandler, sellerHandler, authMiddleware, ownerOnlyMiddleware)
+	})
+
+	// 10. HTTP Server Setup & Graceful Shutdown
 	srv := &http.Server{
 		Addr:         ":" + cfg.Server.Port,
 		Handler:      r,
