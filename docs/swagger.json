@@ -181,6 +181,342 @@
                 }
             }
         },
+        "/api/v1/products": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Browse catalog with optional search, low stock filter, and pagination. Cost price is masked to 0.00 for sellers.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "List Products",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by name or SKU substring",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter products where stock \u003c= min_stock_alert",
+                        "name": "low_stock",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Pagination limit (max 100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Pagination offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.ProductListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Register a new product in the catalog (Owner only).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Create Product",
+                "parameters": [
+                    {
+                        "description": "Product details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/http.CreateProductRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.ProductResponseDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/products/by-qr/{code}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Find a product by its scanned QR code barcode. Cost price is masked to 0.00 for sellers.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Get Product by QR Code",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Scanned QR code string",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.ProductResponseDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/products/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Modify properties of an existing product in the catalog (Owner only).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Update Product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Product UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Updated product details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/http.UpdateProductRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.ProductResponseDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/products/{id}/qr-image": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Generates and streams PNG image barcode encoding product's QR code (Owner only).",
+                "produces": [
+                    "image/png"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Get Product QR Code Image",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Product UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "PNG image",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/sellers": {
             "get": {
                 "security": [
@@ -409,6 +745,39 @@
                 }
             }
         },
+        "http.CreateProductRequest": {
+            "type": "object",
+            "properties": {
+                "cost_price": {
+                    "type": "number",
+                    "example": 15
+                },
+                "min_stock_alert": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Smartphone Case Pro"
+                },
+                "qr_code": {
+                    "type": "string",
+                    "example": "QR-CASE-001"
+                },
+                "selling_price": {
+                    "type": "number",
+                    "example": 25
+                },
+                "sku": {
+                    "type": "string",
+                    "example": "CASE-001"
+                },
+                "stock_quantity": {
+                    "type": "integer",
+                    "example": 50
+                }
+            }
+        },
         "http.CreateSellerRequest": {
             "type": "object",
             "properties": {
@@ -461,6 +830,29 @@
                 }
             }
         },
+        "http.ProductListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/usecase.ProductResponseDTO"
+                    }
+                },
+                "limit": {
+                    "type": "integer",
+                    "example": 20
+                },
+                "offset": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "total": {
+                    "type": "integer",
+                    "example": 100
+                }
+            }
+        },
         "http.RefreshRequest": {
             "type": "object",
             "properties": {
@@ -484,6 +876,39 @@
                 "commission_rate": {
                     "type": "number",
                     "example": 7.5
+                }
+            }
+        },
+        "http.UpdateProductRequest": {
+            "type": "object",
+            "properties": {
+                "cost_price": {
+                    "type": "number",
+                    "example": 16
+                },
+                "min_stock_alert": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Smartphone Case Pro (Black)"
+                },
+                "qr_code": {
+                    "type": "string",
+                    "example": "QR-CASE-001"
+                },
+                "selling_price": {
+                    "type": "number",
+                    "example": 27
+                },
+                "sku": {
+                    "type": "string",
+                    "example": "CASE-001"
+                },
+                "stock_quantity": {
+                    "type": "integer",
+                    "example": 60
                 }
             }
         },
@@ -546,6 +971,58 @@
                 "message": {
                     "type": "string",
                     "example": "Invalid phone or password"
+                }
+            }
+        },
+        "usecase.ProductResponseDTO": {
+            "type": "object",
+            "properties": {
+                "cost_price": {
+                    "description": "Masked to \"0.00\" for role 'seller'",
+                    "type": "string",
+                    "example": "15.00"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+                },
+                "is_active": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "is_low_stock": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "min_stock_alert": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Smartphone Case Pro"
+                },
+                "qr_code": {
+                    "type": "string",
+                    "example": "QR-CASE-001"
+                },
+                "selling_price": {
+                    "type": "string",
+                    "example": "25.00"
+                },
+                "sku": {
+                    "type": "string",
+                    "example": "CASE-001"
+                },
+                "stock_quantity": {
+                    "type": "integer",
+                    "example": 50
+                },
+                "updated_at": {
+                    "type": "string"
                 }
             }
         },

@@ -7,6 +7,30 @@ definitions:
       user:
         $ref: '#/definitions/http.UserDTO'
     type: object
+  http.CreateProductRequest:
+    properties:
+      cost_price:
+        example: 15
+        type: number
+      min_stock_alert:
+        example: 5
+        type: integer
+      name:
+        example: Smartphone Case Pro
+        type: string
+      qr_code:
+        example: QR-CASE-001
+        type: string
+      selling_price:
+        example: 25
+        type: number
+      sku:
+        example: CASE-001
+        type: string
+      stock_quantity:
+        example: 50
+        type: integer
+    type: object
   http.CreateSellerRequest:
     properties:
       commission_rate:
@@ -43,6 +67,22 @@ definitions:
         example: Success
         type: string
     type: object
+  http.ProductListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/usecase.ProductResponseDTO'
+        type: array
+      limit:
+        example: 20
+        type: integer
+      offset:
+        example: 0
+        type: integer
+      total:
+        example: 100
+        type: integer
+    type: object
   http.RefreshRequest:
     properties:
       refresh_token:
@@ -59,6 +99,30 @@ definitions:
       commission_rate:
         example: 7.5
         type: number
+    type: object
+  http.UpdateProductRequest:
+    properties:
+      cost_price:
+        example: 16
+        type: number
+      min_stock_alert:
+        example: 5
+        type: integer
+      name:
+        example: Smartphone Case Pro (Black)
+        type: string
+      qr_code:
+        example: QR-CASE-001
+        type: string
+      selling_price:
+        example: 27
+        type: number
+      sku:
+        example: CASE-001
+        type: string
+      stock_quantity:
+        example: 60
+        type: integer
     type: object
   http.UserDTO:
     properties:
@@ -102,6 +166,44 @@ definitions:
         type: object
       message:
         example: Invalid phone or password
+        type: string
+    type: object
+  usecase.ProductResponseDTO:
+    properties:
+      cost_price:
+        description: Masked to "0.00" for role 'seller'
+        example: "15.00"
+        type: string
+      created_at:
+        type: string
+      id:
+        example: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
+        type: string
+      is_active:
+        example: true
+        type: boolean
+      is_low_stock:
+        example: false
+        type: boolean
+      min_stock_alert:
+        example: 5
+        type: integer
+      name:
+        example: Smartphone Case Pro
+        type: string
+      qr_code:
+        example: QR-CASE-001
+        type: string
+      selling_price:
+        example: "25.00"
+        type: string
+      sku:
+        example: CASE-001
+        type: string
+      stock_quantity:
+        example: 50
+        type: integer
+      updated_at:
         type: string
     type: object
   usecase.TokenPair:
@@ -236,6 +338,226 @@ paths:
       summary: Refresh Access Token
       tags:
       - Auth
+  /api/v1/products:
+    get:
+      description: Browse catalog with optional search, low stock filter, and pagination.
+        Cost price is masked to 0.00 for sellers.
+      parameters:
+      - description: Filter by name or SKU substring
+        in: query
+        name: search
+        type: string
+      - description: Filter products where stock <= min_stock_alert
+        in: query
+        name: low_stock
+        type: boolean
+      - default: 20
+        description: Pagination limit (max 100)
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Pagination offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.ProductListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List Products
+      tags:
+      - Products
+    post:
+      consumes:
+      - application/json
+      description: Register a new product in the catalog (Owner only).
+      parameters:
+      - description: Product details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.CreateProductRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/usecase.ProductResponseDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create Product
+      tags:
+      - Products
+  /api/v1/products/{id}:
+    put:
+      consumes:
+      - application/json
+      description: Modify properties of an existing product in the catalog (Owner
+        only).
+      parameters:
+      - description: Product UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated product details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.UpdateProductRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usecase.ProductResponseDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update Product
+      tags:
+      - Products
+  /api/v1/products/{id}/qr-image:
+    get:
+      description: Generates and streams PNG image barcode encoding product's QR code
+        (Owner only).
+      parameters:
+      - description: Product UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - image/png
+      responses:
+        "200":
+          description: PNG image
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get Product QR Code Image
+      tags:
+      - Products
+  /api/v1/products/by-qr/{code}:
+    get:
+      description: Find a product by its scanned QR code barcode. Cost price is masked
+        to 0.00 for sellers.
+      parameters:
+      - description: Scanned QR code string
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usecase.ProductResponseDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get Product by QR Code
+      tags:
+      - Products
   /api/v1/sellers:
     get:
       description: Returns a list of all seller accounts and their commission rates

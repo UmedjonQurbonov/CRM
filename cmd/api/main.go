@@ -19,6 +19,9 @@ import (
 	"github.com/UmedjonQurbonov/CRM/internal/modules/auth/domain"
 	"github.com/UmedjonQurbonov/CRM/internal/modules/auth/repository"
 	"github.com/UmedjonQurbonov/CRM/internal/modules/auth/usecase"
+	productHttp "github.com/UmedjonQurbonov/CRM/internal/modules/product/delivery/http"
+	productRepo "github.com/UmedjonQurbonov/CRM/internal/modules/product/repository"
+	productUsecase "github.com/UmedjonQurbonov/CRM/internal/modules/product/usecase"
 	"github.com/UmedjonQurbonov/CRM/internal/platform/database"
 	"github.com/UmedjonQurbonov/CRM/internal/platform/hasher"
 	"github.com/UmedjonQurbonov/CRM/internal/platform/redis"
@@ -102,7 +105,12 @@ func main() {
 	authHandler := authHttp.NewAuthHandler(authUsecase)
 	sellerHandler := authHttp.NewSellerHandler(sellerUsecase)
 
-	// 8. Initialize Redis client (health check)
+	// 8. Initialize Product module
+	prodRepo := productRepo.NewPostgresProductRepository(dbPool)
+	prodUsecase := productUsecase.NewProductUsecase(prodRepo)
+	prodHandler := productHttp.NewProductHandler(prodUsecase)
+
+	// 9. Initialize Redis client (health check)
 	redisStatus := "connected"
 	redisClient, err := redis.NewClient(ctx, cfg.Redis)
 	if err != nil {
@@ -113,7 +121,7 @@ func main() {
 		log.Printf("Connected to Redis on %s", cfg.Redis.Addr)
 	}
 
-	// 9. Setup Chi Router & Middleware
+	// 10. Setup Chi Router & Middleware
 	r := chi.NewRouter()
 
 	r.Use(chiMiddleware.RequestID)
@@ -141,6 +149,7 @@ func main() {
 
 	r.Route("/api/v1", func(apiRouter chi.Router) {
 		authHttp.RegisterRoutes(apiRouter, authHandler, sellerHandler, authMiddleware, ownerOnlyMiddleware)
+		productHttp.RegisterRoutes(apiRouter, prodHandler, authMiddleware, ownerOnlyMiddleware)
 	})
 
 	// 10. HTTP Server Setup & Graceful Shutdown
