@@ -78,7 +78,7 @@ func (r *PostgresOrderRepository) CreateOrderTx(
 
 		// Use custom price if provided by seller/cashier, otherwise use product's selling price
 		unitPrice := sellingPrice
-		if item.UnitPrice != nil && item.UnitPrice.GreaterThan(decimal.Zero) {
+		if item.UnitPrice != nil && item.UnitPrice.GreaterThanOrEqual(decimal.Zero) {
 			unitPrice = *item.UnitPrice
 		}
 

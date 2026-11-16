@@ -346,6 +346,66 @@ func (h *ProductHandler) RestockProduct(w http.ResponseWriter, r *http.Request) 
 	response.JSON(w, http.StatusOK, product)
 }
 
+// UploadImage godoc
+// @Summary Upload Any Product Image
+// @Description Uploads an image file (up to 10MB, JPG/PNG/WebP) and returns its storage URL. Owner only.
+// @Tags Products
+// @Security BearerAuth
+// @Accept multipart/form-data
+// @Produce json
+// @Param file formData file true "Image file"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} response.ErrorResponse
+// @Failure 401 {object} response.ErrorResponse
+// @Failure 403 {object} response.ErrorResponse
+// @Failure 500 {object} response.ErrorResponse
+// @Router /api/v1/products/upload-image [post]
+func (h *ProductHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		response.Error(w, http.StatusBadRequest, "FILE_TOO_LARGE", "File size must not exceed 10MB", nil)
+		return
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		response.Error(w, http.StatusBadRequest, "INVALID_FILE", "Failed to retrieve uploaded file", nil)
+		return
+	}
+	defer file.Close()
+
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".webp" {
+		response.Error(w, http.StatusBadRequest, "INVALID_FORMAT", "Only JPG, PNG, and WebP are allowed", nil)
+		return
+	}
+
+	uploadDir := "./uploads/products"
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to prepare storage directory", nil)
+		return
+	}
+
+	fileName := fmt.Sprintf("%s%s", uuid.New().String(), ext)
+	dstPath := filepath.Join(uploadDir, fileName)
+
+	dst, err := os.Create(dstPath)
+	if err != nil {
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to create destination file", nil)
+		return
+	}
+	defer dst.Close()
+
+	if _, err := io.Copy(dst, file); err != nil {
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to save image", nil)
+		return
+	}
+
+	imageURL := fmt.Sprintf("/uploads/products/%s", fileName)
+	response.JSON(w, http.StatusOK, map[string]string{
+		"image_url": imageURL,
+	})
+}
+
 // UploadProductImage godoc
 // @Summary Upload Product Photo
 // @Description Upload and save product picture (Owner only). Supports JPEG, PNG, WebP up to 10MB.

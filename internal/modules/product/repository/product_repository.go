@@ -81,7 +81,7 @@ func (r *PostgresProductRepository) Create(ctx context.Context, p *domain.Produc
 
 func (r *PostgresProductRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Product, error) {
 	query := `
-		SELECT id, name, sku, qr_code, category, image_url, cost_price, selling_price,
+		SELECT id, name, sku, qr_code, COALESCE(category, ''), COALESCE(image_url, ''), cost_price, selling_price,
 		       stock_quantity, min_stock_alert, is_active, created_at, updated_at
 		FROM products
 		WHERE id = $1 AND is_active = TRUE
@@ -116,7 +116,7 @@ func (r *PostgresProductRepository) GetByID(ctx context.Context, id uuid.UUID) (
 
 func (r *PostgresProductRepository) GetByQRCode(ctx context.Context, qrCode string) (*domain.Product, error) {
 	query := `
-		SELECT id, name, sku, qr_code, category, image_url, cost_price, selling_price,
+		SELECT id, name, sku, qr_code, COALESCE(category, ''), COALESCE(image_url, ''), cost_price, selling_price,
 		       stock_quantity, min_stock_alert, is_active, created_at, updated_at
 		FROM products
 		WHERE qr_code = $1 AND is_active = TRUE
@@ -204,7 +204,7 @@ func (r *PostgresProductRepository) List(ctx context.Context, filter usecase.Pro
 	}
 
 	dataQuery := fmt.Sprintf(`
-		SELECT id, name, sku, qr_code, category, image_url, cost_price, selling_price,
+		SELECT id, name, sku, qr_code, COALESCE(category, ''), COALESCE(image_url, ''), cost_price, selling_price,
 		       stock_quantity, min_stock_alert, is_active, created_at, updated_at
 		FROM products
 		WHERE %s
@@ -323,7 +323,7 @@ func (r *PostgresProductRepository) Restock(ctx context.Context, id uuid.UUID, a
 			    cost_price = $2,
 			    updated_at = CURRENT_TIMESTAMP
 			WHERE id = $3 AND is_active = TRUE
-			RETURNING id, name, sku, qr_code, category, image_url, cost_price, selling_price,
+			RETURNING id, name, sku, qr_code, COALESCE(category, ''), COALESCE(image_url, ''), cost_price, selling_price,
 			          stock_quantity, min_stock_alert, is_active, created_at, updated_at
 		`
 		args = []any{addedQty, *newCostPrice, id}
@@ -333,7 +333,7 @@ func (r *PostgresProductRepository) Restock(ctx context.Context, id uuid.UUID, a
 			SET stock_quantity = stock_quantity + $1,
 			    updated_at = CURRENT_TIMESTAMP
 			WHERE id = $2 AND is_active = TRUE
-			RETURNING id, name, sku, qr_code, category, image_url, cost_price, selling_price,
+			RETURNING id, name, sku, qr_code, COALESCE(category, ''), COALESCE(image_url, ''), cost_price, selling_price,
 			          stock_quantity, min_stock_alert, is_active, created_at, updated_at
 		`
 		args = []any{addedQty, id}

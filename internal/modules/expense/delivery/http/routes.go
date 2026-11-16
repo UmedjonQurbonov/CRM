@@ -6,7 +6,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// RegisterRoutes mounts all expense endpoints onto the Chi router.
+// RegisterRoutes mounts all expense and category endpoints onto the Chi router.
 func RegisterRoutes(
 	r chi.Router,
 	handler *ExpenseHandler,
@@ -14,23 +14,28 @@ func RegisterRoutes(
 	ownerOnlyMiddleware func(http.Handler) http.Handler,
 	categoryHandler ...*ExpenseCategoryHandler,
 ) {
-	r.Route("/expenses", func(r chi.Router) {
-		r.Use(authMiddleware)
-		r.Use(ownerOnlyMiddleware)
+	r.Group(func(er chi.Router) {
+		er.Use(authMiddleware)
+		er.Use(ownerOnlyMiddleware)
 
-		r.Post("/", handler.CreateExpense)
-		r.Get("/", handler.ListExpenses)
-		r.Delete("/{id}", handler.DeleteExpense)
+		er.Get("/expenses", handler.ListExpenses)
+		er.Get("/expenses/", handler.ListExpenses)
+		er.Post("/expenses", handler.CreateExpense)
+		er.Post("/expenses/", handler.CreateExpense)
+		er.Delete("/expenses/{id}", handler.DeleteExpense)
 	})
 
 	if len(categoryHandler) > 0 && categoryHandler[0] != nil {
-		r.Route("/expense-categories", func(r chi.Router) {
-			r.Use(authMiddleware)
-			r.Use(ownerOnlyMiddleware)
+		catH := categoryHandler[0]
+		r.Group(func(cr chi.Router) {
+			cr.Use(authMiddleware)
+			cr.Use(ownerOnlyMiddleware)
 
-			r.Get("/", categoryHandler[0].ListCategories)
-			r.Post("/", categoryHandler[0].CreateCategory)
-			r.Delete("/{id}", categoryHandler[0].DeleteCategory)
+			cr.Get("/expense-categories", catH.ListCategories)
+			cr.Get("/expense-categories/", catH.ListCategories)
+			cr.Post("/expense-categories", catH.CreateCategory)
+			cr.Post("/expense-categories/", catH.CreateCategory)
+			cr.Delete("/expense-categories/{id}", catH.DeleteCategory)
 		})
 	}
 }

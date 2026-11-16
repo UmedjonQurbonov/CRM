@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -373,6 +374,31 @@ func TestOrderUsecase_SellerDataIsolation(t *testing.T) {
 	viewOwner, err := usecase.GetOrderByID(ctx, orderUUID, uuid.New(), "owner")
 	if err != nil || viewOwner.ID != orderA.ID {
 		t.Errorf("expected owner to view order, got error: %v", err)
+	}
+}
+
+func TestCartItemDTO_JSON(t *testing.T) {
+	// JSON with numeric unit_price (as sent by JavaScript JSON.stringify({ unit_price: 25.5 }))
+	rawJSON := `{"payment_method":"cash","items":[{"product_id":"6ba7b810-9dad-11d1-80b4-00c04fd430c8","quantity":2,"unit_price":25.5}]}`
+	var req CheckoutRequestDTO
+	if err := json.Unmarshal([]byte(rawJSON), &req); err != nil {
+		t.Fatalf("failed to unmarshal JSON with number unit_price: %v", err)
+	}
+	if req.Items[0].UnitPrice == nil {
+		t.Fatal("expected UnitPrice to not be nil")
+	}
+	if req.Items[0].UnitPrice.String() != "25.5" {
+		t.Errorf("expected 25.5, got %s", req.Items[0].UnitPrice.String())
+	}
+
+	// JSON with string unit_price
+	rawJSONStr := `{"payment_method":"cash","items":[{"product_id":"6ba7b810-9dad-11d1-80b4-00c04fd430c8","quantity":2,"unit_price":"30.00"}]}`
+	var reqStr CheckoutRequestDTO
+	if err := json.Unmarshal([]byte(rawJSONStr), &reqStr); err != nil {
+		t.Fatalf("failed to unmarshal JSON with string unit_price: %v", err)
+	}
+	if reqStr.Items[0].UnitPrice == nil || reqStr.Items[0].UnitPrice.String() != "30" {
+		t.Errorf("expected 30, got %v", reqStr.Items[0].UnitPrice)
 	}
 }
 

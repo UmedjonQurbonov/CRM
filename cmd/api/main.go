@@ -153,6 +153,7 @@ func main() {
 	// 13. Setup Chi Router & Middleware
 	r := chi.NewRouter()
 
+	r.Use(chiMiddleware.CleanPath)
 	r.Use(chiMiddleware.RequestID)
 	r.Use(chiMiddleware.RealIP)
 	r.Use(chiMiddleware.Logger)

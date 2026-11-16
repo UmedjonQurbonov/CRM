@@ -13,21 +13,24 @@ func RegisterRoutes(
 	authMiddleware func(http.Handler) http.Handler,
 	ownerOnlyMiddleware func(http.Handler) http.Handler,
 ) {
-	r.Route("/products", func(r chi.Router) {
-		r.Use(authMiddleware)
+	r.Group(func(pr chi.Router) {
+		pr.Use(authMiddleware)
 
 		// Accessible to both Owner and Seller
-		r.Get("/", handler.ListProducts)
-		r.Get("/by-qr/{code}", handler.GetByQRCode)
+		pr.Get("/products", handler.ListProducts)
+		pr.Get("/products/", handler.ListProducts)
+		pr.Get("/products/by-qr/{code}", handler.GetByQRCode)
 
 		// Accessible exclusively to Owner
-		r.Group(func(ownerRouter chi.Router) {
+		pr.Group(func(ownerRouter chi.Router) {
 			ownerRouter.Use(ownerOnlyMiddleware)
-			ownerRouter.Post("/", handler.CreateProduct)
-			ownerRouter.Put("/{id}", handler.UpdateProduct)
-			ownerRouter.Post("/{id}/restock", handler.RestockProduct)
-			ownerRouter.Post("/{id}/image", handler.UploadProductImage)
-			ownerRouter.Get("/{id}/qr-image", handler.GenerateQRCodePNG)
+			ownerRouter.Post("/products", handler.CreateProduct)
+			ownerRouter.Post("/products/", handler.CreateProduct)
+			ownerRouter.Post("/products/upload-image", handler.UploadImage)
+			ownerRouter.Put("/products/{id}", handler.UpdateProduct)
+			ownerRouter.Post("/products/{id}/restock", handler.RestockProduct)
+			ownerRouter.Post("/products/{id}/image", handler.UploadProductImage)
+			ownerRouter.Get("/products/{id}/qr-image", handler.GenerateQRCodePNG)
 		})
 	})
 }
