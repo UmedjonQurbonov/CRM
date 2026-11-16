@@ -76,8 +76,14 @@ func (r *PostgresOrderRepository) CreateOrderTx(
 			return nil, fmt.Errorf("failed to deduct stock for product %s: %w", item.ProductID, err)
 		}
 
+		// Use custom price if provided by seller/cashier, otherwise use product's selling price
+		unitPrice := sellingPrice
+		if item.UnitPrice != nil && item.UnitPrice.GreaterThan(decimal.Zero) {
+			unitPrice = *item.UnitPrice
+		}
+
 		qtyDec := decimal.NewFromInt(int64(item.Quantity))
-		subtotal := sellingPrice.Mul(qtyDec)
+		subtotal := unitPrice.Mul(qtyDec)
 		totalAmount = totalAmount.Add(subtotal)
 		totalCost = totalCost.Add(costPrice.Mul(qtyDec))
 
@@ -87,7 +93,7 @@ func (r *PostgresOrderRepository) CreateOrderTx(
 			ProductID:     prodID,
 			ProductName:   prodName,
 			Quantity:      item.Quantity,
-			UnitPrice:     sellingPrice,
+			UnitPrice:     unitPrice,
 			UnitCostPrice: costPrice,
 			Subtotal:      subtotal,
 		})

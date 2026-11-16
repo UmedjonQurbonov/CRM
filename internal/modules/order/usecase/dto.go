@@ -4,12 +4,14 @@ import (
 	"time"
 
 	"github.com/UmedjonQurbonov/CRM/internal/modules/order/domain"
+	"github.com/shopspring/decimal"
 )
 
-// CartItemDTO defines product item in checkout request.
+// CartItemDTO defines product item in checkout request with optional custom selling price.
 type CartItemDTO struct {
-	ProductID string `json:"product_id" example:"6ba7b810-9dad-11d1-80b4-00c04fd430c8"`
-	Quantity  int    `json:"quantity" example:"2"`
+	ProductID string           `json:"product_id" example:"6ba7b810-9dad-11d1-80b4-00c04fd430c8"`
+	Quantity  int              `json:"quantity" example:"2"`
+	UnitPrice *decimal.Decimal `json:"unit_price,omitempty" example:"23.50"` // Optional custom price set by seller
 }
 
 // CheckoutRequestDTO defines checkout payload.

@@ -103,6 +103,42 @@ func (m *mockProductRepo) Deactivate(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+func (m *mockProductRepo) Restock(ctx context.Context, id uuid.UUID, addedQty int, newCostPrice *decimal.Decimal) (*domain.Product, error) {
+	existing, exists := m.byID[id]
+	if !exists || !existing.IsActive {
+		return nil, domain.ErrProductNotFound
+	}
+	existing.StockQuantity += addedQty
+	if newCostPrice != nil {
+		existing.CostPrice = *newCostPrice
+	}
+	existing.UpdatedAt = time.Now()
+	return existing, nil
+}
+
+func (m *mockProductRepo) UpdateImage(ctx context.Context, id uuid.UUID, imageURL string) error {
+	existing, exists := m.byID[id]
+	if !exists || !existing.IsActive {
+		return domain.ErrProductNotFound
+	}
+	existing.ImageURL = imageURL
+	existing.UpdatedAt = time.Now()
+	return nil
+}
+
+func (m *mockProductRepo) GetTotalStockProfit(ctx context.Context) (decimal.Decimal, error) {
+	total := decimal.Zero
+	for _, p := range m.byID {
+		if p.IsActive && p.StockQuantity > 0 {
+			unitProfit := p.SellingPrice.Sub(p.CostPrice)
+			if unitProfit.GreaterThan(decimal.Zero) {
+				total = total.Add(unitProfit.Mul(decimal.NewFromInt(int64(p.StockQuantity))))
+			}
+		}
+	}
+	return total, nil
+}
+
 // 1. Tests for Seller Cost Price Masking vs Owner Visibility
 func TestProductUsecase_CostPriceMasking(t *testing.T) {
 	ctx := context.Background()
@@ -302,5 +338,106 @@ func TestProductUsecase_DuplicateSKUAndQRCode(t *testing.T) {
 	})
 	if err != domain.ErrDuplicateQRCode {
 		t.Errorf("expected ErrDuplicateQRCode, got %v", err)
+	}
+}
+
+// 5. Tests for Restock, Photos, Categories, and Potential Profit
+func TestProductUsecase_NewFeatures(t *testing.T) {
+	ctx := context.Background()
+	repo := newMockProductRepo()
+	usecase := NewProductUsecase(repo)
+
+	// Create product with category and image
+	created, err := usecase.CreateProduct(ctx, CreateProductDTO{
+		Name:          "Gaming Mouse",
+		SKU:           "MOUSE-001",
+		QRCode:        "QR-MOUSE-001",
+		Category:      "Electronics",
+		ImageURL:      "/uploads/products/mouse.png",
+		CostPrice:     decimal.NewFromFloat(40.00),
+		SellingPrice:  decimal.NewFromFloat(70.00),
+		StockQuantity: 10,
+		MinStockAlert: 2,
+	})
+	if err != nil {
+		t.Fatalf("failed to create product: %v", err)
+	}
+
+	prodID, _ := uuid.Parse(created.ID)
+
+	// Check owner sees potential profits: unit = 30.00, total = 300.00
+	ownerProd, err := usecase.GetByID(ctx, prodID, "owner")
+	if err != nil {
+		t.Fatalf("failed to get product as owner: %v", err)
+	}
+	if ownerProd.Category != "Electronics" {
+		t.Errorf("expected category 'Electronics', got %q", ownerProd.Category)
+	}
+	if ownerProd.ImageURL != "/uploads/products/mouse.png" {
+		t.Errorf("expected image url '/uploads/products/mouse.png', got %q", ownerProd.ImageURL)
+	}
+	if ownerProd.UnitProfit != "30.00" {
+		t.Errorf("expected unit profit '30.00', got %q", ownerProd.UnitProfit)
+	}
+	if ownerProd.TotalPotentialProfit != "300.00" {
+		t.Errorf("expected total potential profit '300.00', got %q", ownerProd.TotalPotentialProfit)
+	}
+
+	// Check seller sees masked profit
+	sellerProd, err := usecase.GetByID(ctx, prodID, "seller")
+	if err != nil {
+		t.Fatalf("failed to get product as seller: %v", err)
+	}
+	if sellerProd.UnitProfit != "0.00" || sellerProd.TotalPotentialProfit != "0.00" {
+		t.Errorf("expected seller to see masked profits 0.00, got %s / %s", sellerProd.UnitProfit, sellerProd.TotalPotentialProfit)
+	}
+
+	// Restock product (+5 items, new cost price 35.00)
+	newCost := decimal.NewFromFloat(35.00)
+	restocked, err := usecase.RestockProduct(ctx, RestockProductDTO{
+		ID:        prodID,
+		Quantity:  5,
+		CostPrice: &newCost,
+	})
+	if err != nil {
+		t.Fatalf("failed to restock product: %v", err)
+	}
+	if restocked.StockQuantity != 15 {
+		t.Errorf("expected stock quantity 15, got %d", restocked.StockQuantity)
+	}
+	if restocked.CostPrice != "35.00" {
+		t.Errorf("expected new cost price '35.00', got %q", restocked.CostPrice)
+	}
+	// Unit profit: 70 - 35 = 35.00, total profit = 35 * 15 = 525.00
+	if restocked.UnitProfit != "35.00" || restocked.TotalPotentialProfit != "525.00" {
+		t.Errorf("expected updated profits 35.00 / 525.00, got %s / %s", restocked.UnitProfit, restocked.TotalPotentialProfit)
+	}
+
+	// Update image
+	err = usecase.UpdateProductImage(ctx, prodID, "/uploads/products/mouse_v2.png")
+	if err != nil {
+		t.Fatalf("failed to update image: %v", err)
+	}
+	updatedProd, _ := usecase.GetByID(ctx, prodID, "owner")
+	if updatedProd.ImageURL != "/uploads/products/mouse_v2.png" {
+		t.Errorf("expected updated image url, got %q", updatedProd.ImageURL)
+	}
+
+	// Check TotalStockProfit
+	totalProfit, err := usecase.GetTotalStockProfit(ctx, "owner")
+	if err != nil {
+		t.Fatalf("failed to get total stock profit: %v", err)
+	}
+	if !totalProfit.Equal(decimal.NewFromFloat(525.00)) {
+		t.Errorf("expected total stock profit 525.00, got %v", totalProfit)
+	}
+
+	// Seller gets 0.00 masked total stock profit
+	sellerProfit, err := usecase.GetTotalStockProfit(ctx, "seller")
+	if err != nil {
+		t.Fatalf("unexpected error when seller asks for total stock profit: %v", err)
+	}
+	if !sellerProfit.IsZero() {
+		t.Errorf("expected seller to get 0.00 for total stock profit, got %v", sellerProfit)
 	}
 }

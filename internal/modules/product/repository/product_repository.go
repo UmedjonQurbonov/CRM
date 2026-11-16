@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/shopspring/decimal"
 )
 
 type PostgresProductRepository struct {
@@ -39,10 +40,10 @@ func (r *PostgresProductRepository) Create(ctx context.Context, p *domain.Produc
 
 	query := `
 		INSERT INTO products (
-			id, name, sku, qr_code, cost_price, selling_price,
+			id, name, sku, qr_code, category, image_url, cost_price, selling_price,
 			stock_quantity, min_stock_alert, is_active, created_at, updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 		RETURNING id, created_at, updated_at
 	`
 
@@ -51,6 +52,8 @@ func (r *PostgresProductRepository) Create(ctx context.Context, p *domain.Produc
 		p.Name,
 		p.SKU,
 		p.QRCode,
+		p.Category,
+		p.ImageURL,
 		p.CostPrice,
 		p.SellingPrice,
 		p.StockQuantity,
@@ -78,7 +81,7 @@ func (r *PostgresProductRepository) Create(ctx context.Context, p *domain.Produc
 
 func (r *PostgresProductRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Product, error) {
 	query := `
-		SELECT id, name, sku, qr_code, cost_price, selling_price,
+		SELECT id, name, sku, qr_code, category, image_url, cost_price, selling_price,
 		       stock_quantity, min_stock_alert, is_active, created_at, updated_at
 		FROM products
 		WHERE id = $1 AND is_active = TRUE
@@ -90,6 +93,8 @@ func (r *PostgresProductRepository) GetByID(ctx context.Context, id uuid.UUID) (
 		&p.Name,
 		&p.SKU,
 		&p.QRCode,
+		&p.Category,
+		&p.ImageURL,
 		&p.CostPrice,
 		&p.SellingPrice,
 		&p.StockQuantity,
@@ -111,7 +116,7 @@ func (r *PostgresProductRepository) GetByID(ctx context.Context, id uuid.UUID) (
 
 func (r *PostgresProductRepository) GetByQRCode(ctx context.Context, qrCode string) (*domain.Product, error) {
 	query := `
-		SELECT id, name, sku, qr_code, cost_price, selling_price,
+		SELECT id, name, sku, qr_code, category, image_url, cost_price, selling_price,
 		       stock_quantity, min_stock_alert, is_active, created_at, updated_at
 		FROM products
 		WHERE qr_code = $1 AND is_active = TRUE
@@ -123,6 +128,8 @@ func (r *PostgresProductRepository) GetByQRCode(ctx context.Context, qrCode stri
 		&p.Name,
 		&p.SKU,
 		&p.QRCode,
+		&p.Category,
+		&p.ImageURL,
 		&p.CostPrice,
 		&p.SellingPrice,
 		&p.StockQuantity,
@@ -156,8 +163,22 @@ func (r *PostgresProductRepository) List(ctx context.Context, filter usecase.Pro
 		argIdx++
 	}
 
+	if filter.Category != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("category = $%d", argIdx))
+		args = append(args, strings.TrimSpace(filter.Category))
+		argIdx++
+	}
+
 	if filter.LowStock {
 		whereClauses = append(whereClauses, "stock_quantity <= min_stock_alert")
+	}
+
+	if filter.InStock != nil {
+		if *filter.InStock {
+			whereClauses = append(whereClauses, "stock_quantity > 0")
+		} else {
+			whereClauses = append(whereClauses, "stock_quantity = 0")
+		}
 	}
 
 	whereSQL := strings.Join(whereClauses, " AND ")
@@ -183,7 +204,7 @@ func (r *PostgresProductRepository) List(ctx context.Context, filter usecase.Pro
 	}
 
 	dataQuery := fmt.Sprintf(`
-		SELECT id, name, sku, qr_code, cost_price, selling_price,
+		SELECT id, name, sku, qr_code, category, image_url, cost_price, selling_price,
 		       stock_quantity, min_stock_alert, is_active, created_at, updated_at
 		FROM products
 		WHERE %s
@@ -207,6 +228,8 @@ func (r *PostgresProductRepository) List(ctx context.Context, filter usecase.Pro
 			&p.Name,
 			&p.SKU,
 			&p.QRCode,
+			&p.Category,
+			&p.ImageURL,
 			&p.CostPrice,
 			&p.SellingPrice,
 			&p.StockQuantity,
@@ -230,9 +253,10 @@ func (r *PostgresProductRepository) List(ctx context.Context, filter usecase.Pro
 func (r *PostgresProductRepository) Update(ctx context.Context, p *domain.Product) (*domain.Product, error) {
 	query := `
 		UPDATE products
-		SET name = $1, sku = $2, qr_code = $3, cost_price = $4, selling_price = $5,
-		    stock_quantity = $6, min_stock_alert = $7, updated_at = CURRENT_TIMESTAMP
-		WHERE id = $8 AND is_active = TRUE
+		SET name = $1, sku = $2, qr_code = $3, category = $4, image_url = $5,
+		    cost_price = $6, selling_price = $7, stock_quantity = $8,
+		    min_stock_alert = $9, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $10 AND is_active = TRUE
 		RETURNING updated_at
 	`
 
@@ -240,6 +264,8 @@ func (r *PostgresProductRepository) Update(ctx context.Context, p *domain.Produc
 		p.Name,
 		p.SKU,
 		p.QRCode,
+		p.Category,
+		p.ImageURL,
 		p.CostPrice,
 		p.SellingPrice,
 		p.StockQuantity,
@@ -283,4 +309,97 @@ func (r *PostgresProductRepository) Deactivate(ctx context.Context, id uuid.UUID
 	}
 
 	return nil
+}
+
+// Restock increments stock quantity and optionally updates cost price.
+func (r *PostgresProductRepository) Restock(ctx context.Context, id uuid.UUID, addedQty int, newCostPrice *decimal.Decimal) (*domain.Product, error) {
+	var query string
+	var args []any
+
+	if newCostPrice != nil && newCostPrice.IsPositive() {
+		query = `
+			UPDATE products
+			SET stock_quantity = stock_quantity + $1,
+			    cost_price = $2,
+			    updated_at = CURRENT_TIMESTAMP
+			WHERE id = $3 AND is_active = TRUE
+			RETURNING id, name, sku, qr_code, category, image_url, cost_price, selling_price,
+			          stock_quantity, min_stock_alert, is_active, created_at, updated_at
+		`
+		args = []any{addedQty, *newCostPrice, id}
+	} else {
+		query = `
+			UPDATE products
+			SET stock_quantity = stock_quantity + $1,
+			    updated_at = CURRENT_TIMESTAMP
+			WHERE id = $2 AND is_active = TRUE
+			RETURNING id, name, sku, qr_code, category, image_url, cost_price, selling_price,
+			          stock_quantity, min_stock_alert, is_active, created_at, updated_at
+		`
+		args = []any{addedQty, id}
+	}
+
+	var p domain.Product
+	err := r.pool.QueryRow(ctx, query, args...).Scan(
+		&p.ID,
+		&p.Name,
+		&p.SKU,
+		&p.QRCode,
+		&p.Category,
+		&p.ImageURL,
+		&p.CostPrice,
+		&p.SellingPrice,
+		&p.StockQuantity,
+		&p.MinStockAlert,
+		&p.IsActive,
+		&p.CreatedAt,
+		&p.UpdatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrProductNotFound
+		}
+		return nil, fmt.Errorf("failed to restock product: %w", err)
+	}
+
+	return &p, nil
+}
+
+// UpdateImage updates the image URL of an existing product.
+func (r *PostgresProductRepository) UpdateImage(ctx context.Context, id uuid.UUID, imageURL string) error {
+	query := `
+		UPDATE products
+		SET image_url = $1, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $2 AND is_active = TRUE
+	`
+	cmdTag, err := r.pool.Exec(ctx, query, imageURL, id)
+	if err != nil {
+		return fmt.Errorf("failed to update product image: %w", err)
+	}
+	if cmdTag.RowsAffected() == 0 {
+		return domain.ErrProductNotFound
+	}
+	return nil
+}
+
+// GetTotalStockProfit calculates SUM(stock_quantity * (selling_price - cost_price)) for all active products.
+func (r *PostgresProductRepository) GetTotalStockProfit(ctx context.Context) (decimal.Decimal, error) {
+	query := `
+		SELECT COALESCE(SUM(
+			CASE 
+				WHEN (selling_price - cost_price) > 0 AND stock_quantity > 0 
+				THEN stock_quantity * (selling_price - cost_price) 
+				ELSE 0 
+			END
+		), 0)
+		FROM products
+		WHERE is_active = TRUE
+	`
+	var total decimal.Decimal
+	err := r.pool.QueryRow(ctx, query).Scan(&total)
+	if err != nil {
+		return decimal.Zero, fmt.Errorf("failed to calculate total stock profit: %w", err)
+	}
+	return total, nil
 }

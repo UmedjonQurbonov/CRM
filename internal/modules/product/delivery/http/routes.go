@@ -25,6 +25,8 @@ func RegisterRoutes(
 			ownerRouter.Use(ownerOnlyMiddleware)
 			ownerRouter.Post("/", handler.CreateProduct)
 			ownerRouter.Put("/{id}", handler.UpdateProduct)
+			ownerRouter.Post("/{id}/restock", handler.RestockProduct)
+			ownerRouter.Post("/{id}/image", handler.UploadProductImage)
 			ownerRouter.Get("/{id}/qr-image", handler.GenerateQRCodePNG)
 		})
 	})

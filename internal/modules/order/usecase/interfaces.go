@@ -13,6 +13,7 @@ import (
 type CartItemInput struct {
 	ProductID uuid.UUID
 	Quantity  int
+	UnitPrice *decimal.Decimal // Optional custom price set by seller/cashier
 }
 
 // OrderFilter specifies search criteria for sales orders.

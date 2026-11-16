@@ -14,6 +14,8 @@ type Product struct {
 	Name          string
 	SKU           string
 	QRCode        string
+	Category      string
+	ImageURL      string
 	CostPrice     decimal.Decimal
 	SellingPrice  decimal.Decimal
 	StockQuantity int
@@ -46,4 +48,21 @@ func (p *Product) Validate() error {
 // IsLowStock returns true if current stock is at or below the minimum alert threshold.
 func (p *Product) IsLowStock() bool {
 	return p.StockQuantity <= p.MinStockAlert
+}
+
+// UnitProfit returns the potential profit per unit (selling_price - cost_price).
+func (p *Product) UnitProfit() decimal.Decimal {
+	return p.SellingPrice.Sub(p.CostPrice)
+}
+
+// TotalPotentialProfit returns the potential profit for all available stock of this product.
+func (p *Product) TotalPotentialProfit() decimal.Decimal {
+	if p.StockQuantity <= 0 {
+		return decimal.Zero
+	}
+	unitProfit := p.UnitProfit()
+	if unitProfit.IsNegative() {
+		return decimal.Zero
+	}
+	return unitProfit.Mul(decimal.NewFromInt(int64(p.StockQuantity)))
 }

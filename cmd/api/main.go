@@ -129,6 +129,11 @@ func main() {
 	expUsecase := expenseUsecase.NewExpenseUsecase(expRepo)
 	expHandler := expenseHttp.NewExpenseHandler(expUsecase)
 
+	// 10b. Initialize Expense Category module
+	expCatRepo := expenseRepo.NewPostgresExpenseCategoryRepository(dbPool)
+	expCatUsecase := expenseUsecase.NewExpenseCategoryUsecase(expCatRepo)
+	expCatHandler := expenseHttp.NewExpenseCategoryHandler(expCatUsecase)
+
 	// 11. Initialize Analytics module
 	anRepo := analyticsRepo.NewPostgresAnalyticsRepository(dbPool)
 	anUsecase := analyticsUsecase.NewAnalyticsUsecase(anRepo)
@@ -167,6 +172,9 @@ func main() {
 	r.Get("/health", handleHealthCheck(dbPool, redisStatus))
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 
+	// Static file serving for product images
+	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
+
 	// API v1 routes
 	authMiddleware := middleware.AuthMiddleware(tokenService)
 	ownerOnlyMiddleware := middleware.RequireRole(domain.RoleOwner)
@@ -175,7 +183,7 @@ func main() {
 		authHttp.RegisterRoutes(apiRouter, authHandler, sellerHandler, anHandler.GetMyEarnings, authMiddleware, ownerOnlyMiddleware)
 		productHttp.RegisterRoutes(apiRouter, prodHandler, authMiddleware, ownerOnlyMiddleware)
 		orderHttp.RegisterRoutes(apiRouter, ordHandler, authMiddleware, ownerOnlyMiddleware)
-		expenseHttp.RegisterRoutes(apiRouter, expHandler, authMiddleware, ownerOnlyMiddleware)
+		expenseHttp.RegisterRoutes(apiRouter, expHandler, authMiddleware, ownerOnlyMiddleware, expCatHandler)
 		analyticsHttp.RegisterRoutes(apiRouter, anHandler, authMiddleware, ownerOnlyMiddleware)
 	})
 

@@ -82,7 +82,11 @@ func (m *mockOrderRepo) CreateOrderTx(
 		prod.Stock -= item.Quantity
 
 		qtyDec := decimal.NewFromInt(int64(item.Quantity))
-		subtotal := prod.SalePrice.Mul(qtyDec)
+		unitPrice := prod.SalePrice
+		if item.UnitPrice != nil && item.UnitPrice.GreaterThan(decimal.Zero) {
+			unitPrice = *item.UnitPrice
+		}
+		subtotal := unitPrice.Mul(qtyDec)
 		totalAmount = totalAmount.Add(subtotal)
 		totalCost = totalCost.Add(prod.CostPrice.Mul(qtyDec))
 
@@ -92,7 +96,7 @@ func (m *mockOrderRepo) CreateOrderTx(
 			ProductID:     item.ProductID,
 			ProductName:   prod.Name,
 			Quantity:      item.Quantity,
-			UnitPrice:     prod.SalePrice,
+			UnitPrice:     unitPrice,
 			UnitCostPrice: prod.CostPrice,
 			Subtotal:      subtotal,
 		})
@@ -369,5 +373,56 @@ func TestOrderUsecase_SellerDataIsolation(t *testing.T) {
 	viewOwner, err := usecase.GetOrderByID(ctx, orderUUID, uuid.New(), "owner")
 	if err != nil || viewOwner.ID != orderA.ID {
 		t.Errorf("expected owner to view order, got error: %v", err)
+	}
+}
+
+func TestOrderUsecase_CustomPricing(t *testing.T) {
+	ctx := context.Background()
+	userRepo := &mockUserRepoForOrder{users: make(map[uuid.UUID]*authDomain.User)}
+	orderRepo := newMockOrderRepo()
+
+	sellerID := uuid.New()
+	userRepo.users[sellerID] = &authDomain.User{
+		ID:             sellerID,
+		Role:           authDomain.RoleSeller,
+		CommissionRate: decimal.NewFromFloat(10.0), // 10%
+	}
+
+	prodID := uuid.New()
+	orderRepo.products[prodID] = &mockProductStock{
+		Name:      "Custom Priced Item",
+		Stock:     10,
+		CostPrice: decimal.NewFromFloat(50.00),
+		SalePrice: decimal.NewFromFloat(100.00), // Default 100
+	}
+
+	usecase := NewOrderUsecase(orderRepo, userRepo)
+
+	// Seller sells at discounted custom price 90.00
+	customPrice := decimal.NewFromFloat(90.00)
+	order, err := usecase.Checkout(ctx, sellerID, "seller", CheckoutRequestDTO{
+		PaymentMethod: "cash",
+		Items: []CartItemDTO{
+			{
+				ProductID: prodID.String(),
+				Quantity:  2,
+				UnitPrice: &customPrice,
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("checkout failed: %v", err)
+	}
+
+	// 2 * 90.00 = 180.00
+	if order.TotalAmount != "180.00" {
+		t.Errorf("expected total amount 180.00, got %s", order.TotalAmount)
+	}
+	if len(order.Items) != 1 || order.Items[0].UnitPrice != "90.00" {
+		t.Errorf("expected item unit_price 90.00, got %v", order.Items[0].UnitPrice)
+	}
+	// Commission 10% of 180.00 = 18.00
+	if order.CommissionEarned != "18.00" {
+		t.Errorf("expected commission earned 18.00, got %s", order.CommissionEarned)
 	}
 }

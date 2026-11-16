@@ -17,4 +17,10 @@ var (
 
 	// ErrValidation indicates a generic validation failure.
 	ErrValidation = errors.New("expense validation failed")
+
+	// ErrCategoryNotFound indicates the requested expense category does not exist.
+	ErrCategoryNotFound = errors.New("expense category not found")
+
+	// ErrDuplicateCategory indicates a category with this name already exists.
+	ErrDuplicateCategory = errors.New("expense category already exists")
 )

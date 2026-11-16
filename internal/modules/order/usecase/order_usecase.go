@@ -48,9 +48,13 @@ func (u *OrderUsecase) Checkout(
 		if item.Quantity <= 0 {
 			return nil, domain.ErrValidation
 		}
+		if item.UnitPrice != nil && item.UnitPrice.IsNegative() {
+			return nil, domain.ErrValidation
+		}
 		cartInputs = append(cartInputs, CartItemInput{
 			ProductID: prodID,
 			Quantity:  item.Quantity,
+			UnitPrice: item.UnitPrice,
 		})
 	}
 
