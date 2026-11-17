@@ -23,6 +23,8 @@ WORKDIR /app
 COPY --from=builder /app/bin/api /app/api
 COPY --from=builder /app/migrations /app/migrations
 
+RUN mkdir -p /app/uploads/products && chown -R appuser:appgroup /app
+
 USER appuser
 
 EXPOSE 8080
